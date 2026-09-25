@@ -1,0 +1,49 @@
+services:
+  docgen:
+    build: .
+    container_name: spravahub-docgen
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    # Залишаємо для локальної діагностики з VPS.
+    ports:
+      - "127.0.0.1:8091:8000"
+
+    volumes:
+      - ./secrets:/srv/app/secrets:ro
+      - ./local_templates:/srv/app/local_templates:ro
+
+    tmpfs:
+      - /srv/app/tmp:size=128m,mode=1777
+
+    networks:
+      - superbot-edge
+
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.spravahub-docgen.rule=Host(`docs.spravahub.com.ua`)"
+      - "traefik.http.routers.spravahub-docgen.entrypoints=websecure"
+      - "traefik.http.routers.spravahub-docgen.tls=true"
+      - "traefik.http.routers.spravahub-docgen.tls.certresolver=letsencrypt"
+
+      - "traefik.http.services.spravahub-docgen.loadbalancer.server.port=8000"
+
+      - "traefik.docker.network=superbot-edge"
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  superbot-edge:
+    external: true

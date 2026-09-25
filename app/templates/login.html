@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ app_name }}</title>
+  <style>
+    body{font-family:system-ui,sans-serif;margin:0;background:#f3f4f6;color:#111827}
+    .card{max-width:390px;margin:12vh auto;background:white;padding:28px;border-radius:14px;box-shadow:0 8px 30px #0001}
+    input{box-sizing:border-box;width:100%;padding:11px;margin:6px 0 14px;border:1px solid #d1d5db;border-radius:8px}
+    button{width:100%;padding:11px;border:0;border-radius:8px;background:#111827;color:white;font-weight:600}
+    .error{color:#b91c1c;margin-bottom:12px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>{{ app_name }}</h2>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/login" autocomplete="off">
+      <label>Логін</label><input name="username" required>
+      <label>Пароль</label><input type="password" name="password" required>
+      <button>Увійти</button>
+    </form>
+  </div>
+</body>
+</html>

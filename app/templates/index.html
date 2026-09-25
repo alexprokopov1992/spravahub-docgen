@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ app_name }}</title>
+  <style>
+    :root{color-scheme:light}
+    *{box-sizing:border-box}
+    body{font-family:system-ui,sans-serif;margin:0;background:#f5f6f8;color:#111827}
+    header{background:#111827;color:white;padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+    header form{margin:0}
+    header button{background:#374151}
+    main{max-width:1200px;margin:24px auto;padding:0 16px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    fieldset{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px}
+    legend{font-weight:700;padding:0 6px}
+    label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+    input,select,textarea{width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:7px;font:inherit}
+    textarea{min-height:92px}
+    .actions{position:sticky;bottom:0;background:#f5f6f8e8;backdrop-filter:blur(8px);padding:14px 0;display:flex;gap:12px;align-items:center}
+    button{padding:10px 16px;border:0;border-radius:8px;background:#111827;color:white;font-weight:650;cursor:pointer}
+    .muted{color:#6b7280;font-size:13px}
+    .wide{grid-column:1/-1}
+    .field[hidden], fieldset[hidden], [data-result][hidden]{display:none!important}
+    .field{display:block}
+    @media(max-width:800px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <strong>{{ app_name }}</strong>
+  <form method="post" action="/logout"><button type="submit">Вийти</button></form>
+</header>
+
+<main>
+<form method="post" action="/generate" id="doc-form">
+<div class="grid">
+
+<fieldset class="wide">
+  <legend>Документ</legend>
+  <div class="grid">
+    <div>
+      <label>Тип документа</label>
+      <select name="document_type" id="document_type" required>
+        {% for key, cfg in doc_types.items() %}
+        <option value="{{ key }}">{{ cfg.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Результат</label>
+      <select name="result_mode" id="result_mode">
+        <option value="download" selected>Завантажити файл</option>
+        <option value="google_docs">Відкрити в Google Docs</option>
+      </select>
+      <div class="muted" id="result_mode_help">Готовий файл буде відданий браузеру і не зберігатиметься.</div>
+    </div>
+    <div data-result="download">
+      <label>Спосіб формування файлу</label>
+      <select name="render_mode" id="render_mode">
+        <option value="local" selected>Local — дані тільки на SpravaHub</option>
+        <option value="google">Google Docs — тимчасова копія та export</option>
+      </select>
+    </div>
+    <div data-result="download">
+      <label>Формат</label>
+      <select name="output_format" id="output_format">
+        <option value="docx">DOCX</option>
+        <option value="pdf">PDF</option>
+      </select>
+    </div>
+    <div>
+      <label>Дата документа</label>
+      <input type="date" name="document_date" required>
+    </div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Заявник</legend>
+  <label>Прізвище</label><input name="last_name" required>
+  <label>Ім'я</label><input name="first_name" required>
+  <label>По батькові</label><input name="patronymic">
+  <label>Стать</label>
+  <select name="gender"><option value="male">Чоловіча</option><option value="female">Жіноча</option></select>
+  <p class="muted">Відмінки генеруються автоматично. Override заповнюй лише якщо треба виправити автоматичний результат.</p>
+  <label>Називний — override</label><input name="fio_nom">
+  <label>Родовий — override</label><input name="fio_gen">
+  <label>Давальний — override</label><input name="fio_dat">
+  <label>Підпис — override</label><input name="signature_name" placeholder="Олександр ПРОКОПОВ">
+
+  <div class="field" data-docs="claim_indexation">
+    <label>Електронний кабінет позивача</label>
+    <input name="applicant_electronic_cabinet">
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Паспорт та адреса</legend>
+  <div class="field" data-docs="claim_indexation claim_recalc">
+    <label>Серія паспорта</label><input name="passport_series">
+  </div>
+  <label>Номер паспорта</label><input name="passport_number">
+  <label>Дата видачі</label><input type="date" name="passport_issue_date">
+  <label>Орган, що видав</label><input name="passport_issuer">
+  <label>РНОКПП</label><input name="rnokpp">
+  <label>Адреса реєстрації</label><textarea name="registration_address"></textarea>
+</fieldset>
+
+<fieldset>
+  <legend>Контакти</legend>
+  <label>Адреса листування</label><input name="correspondence_address" value="{{ office_address }}">
+  <label>Телефон</label><input name="phone" value="{{ office_phone }}">
+  <label>Email</label><input name="email" value="{{ office_email }}">
+</fieldset>
+
+<fieldset data-docs="claim_indexation claim_recalc">
+  <legend>Суд</legend>
+  <label>Суд</label>
+  <select name="court_id" id="court_id" required>
+    <option value="" selected disabled>Оберіть суд</option>
+    {% for court in courts %}
+    <option value="{{ court.id }}">{{ court.name }}</option>
+    {% endfor %}
+  </select>
+  <p class="muted">Назва, адреса та телефон суду будуть підставлені автоматично.</p>
+</fieldset>
+
+<fieldset data-docs="application_recalc">
+  <legend>Військова частина — адресат заяви</legend>
+  <label>Номер частини</label><input name="target_unit_number">
+  <label>Адреса</label><textarea name="target_unit_address"></textarea>
+  <label>ЄДРПОУ</label><input name="target_unit_edrpou">
+  <label>Телефон</label><input name="target_unit_phone">
+  <label>Email</label><input name="target_unit_email">
+</fieldset>
+
+<fieldset data-docs="claim_indexation claim_recalc">
+  <legend>Відповідач</legend>
+  <label>Номер частини</label><input name="defendant_unit_number">
+  <label>Адреса</label><textarea name="defendant_unit_address"></textarea>
+  <label>ЄДРПОУ</label><input name="defendant_unit_edrpou">
+  <label>Телефон</label><input name="defendant_unit_phone">
+  <label>Email</label><input name="defendant_unit_email">
+  <div class="field" data-docs="claim_indexation">
+    <label>Електронний кабінет відповідача</label><input name="defendant_unit_electronic_cabinet">
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Період служби</legend>
+  <div class="field" data-docs="claim_indexation claim_recalc">
+    <label>Військова частина, де проходив службу</label><input name="service_unit_number">
+  </div>
+  <label>Початок служби</label><input type="date" name="service_from">
+  <label>Закінчення служби</label><input type="date" name="service_to">
+</fieldset>
+
+<fieldset data-docs="application_recalc claim_recalc">
+  <legend>Спірний період перерахунку</legend>
+  <label>Від</label><input type="date" name="claim_from">
+  <label>До</label><input type="date" name="claim_to">
+  <div class="field" data-docs="claim_recalc">
+    <label>Роки виплат</label><input name="claim_years" placeholder="2022, 2023">
+  </div>
+</fieldset>
+
+<fieldset data-docs="claim_indexation">
+  <legend>Періоди індексації</legend>
+  <label>Загальний період індексації</label>
+  <input name="indexation_full_range" placeholder="23 березня 2016 року по 14 січня 2025 року">
+  <label>Період до 01.03.2018</label>
+  <input name="indexation_pre_2018_range" placeholder="23 березня 2016 року по 28 лютого 2018 року">
+  <label>Період з 01.03.2018</label>
+  <input name="indexation_post_2018_range" placeholder="01 березня 2018 року по 14 січня 2025 року">
+</fieldset>
+
+<fieldset data-docs="claim_indexation claim_recalc">
+  <legend>Досудове звернення</legend>
+  <div class="field" data-docs="claim_recalc">
+    <label>Дата отримання заяви військовою частиною</label>
+    <input type="date" name="pretrial_received_date">
+  </div>
+  <label>Текст відповіді військової частини</label>
+  <textarea name="pretrial_response_text" placeholder="Залишити порожнім, якщо відповіді не було"></textarea>
+</fieldset>
+
+<fieldset data-docs="application_recalc">
+  <legend>Додатки до заяви</legend>
+  <label>Посвідчення офіцера — серія</label><input name="officer_id_series">
+  <label>Посвідчення офіцера — номер</label><input name="officer_id_number">
+  <label>Наказ — номер</label><input name="service_order_number">
+  <label>Наказ — дата</label><input type="date" name="service_order_date">
+  <label>УБД — номер</label><input name="ubd_number">
+  <label>УБД — дата видачі</label><input type="date" name="ubd_issue_date">
+</fieldset>
+
+<fieldset data-docs="claim_indexation">
+  <legend>Додатки до позову про індексацію</legend>
+  <label>Військовий квиток — серія</label><input name="military_id_series">
+  <label>Військовий квиток — номер</label><input name="military_id_number">
+  <label>Наказ — номер</label><input name="service_order_number">
+  <label>Наказ — дата</label><input type="date" name="service_order_date">
+  <p class="muted">Номер частини для наказу береться з поля «Військова частина, де проходив службу».</p>
+  <label>УБД — номер</label><input name="ubd_number">
+  <label>УБД — дата видачі</label><input type="date" name="ubd_issue_date">
+</fieldset>
+
+<fieldset data-docs="claim_recalc">
+  <legend>Додатки до позову про перерахунок</legend>
+  <label>Військовий квиток — серія</label><input name="military_id_series">
+  <label>Військовий квиток — номер</label><input name="military_id_number">
+  <label>Дата видачі військового квитка</label><input type="date" name="military_id_issue_date">
+</fieldset>
+
+</div>
+<div class="actions">
+  <button type="submit" id="generate_button">Згенерувати та завантажити</button>
+  <span class="muted" id="generate_note">Після формування готовий файл не зберігається.</span>
+</div>
+</form>
+</main>
+
+<script>
+(() => {
+  const docSelect = document.getElementById('document_type');
+  const resultSelect = document.getElementById('result_mode');
+  const form = document.getElementById('doc-form');
+  const generateButton = document.getElementById('generate_button');
+  const generateNote = document.getElementById('generate_note');
+  const resultHelp = document.getElementById('result_mode_help');
+  const scoped = [...document.querySelectorAll('[data-docs]')];
+  const resultScoped = [...document.querySelectorAll('[data-result]')];
+
+  function updateDocumentFields() {
+    const current = docSelect.value;
+    for (const el of scoped) {
+      const allowed = (el.dataset.docs || '').split(/\s+/).filter(Boolean);
+      const visible = allowed.includes(current);
+      el.hidden = !visible;
+      for (const control of el.querySelectorAll('input, select, textarea, button')) {
+        control.disabled = !visible;
+      }
+    }
+  }
+
+  function updateResultMode() {
+    const current = resultSelect.value;
+    for (const el of resultScoped) {
+      const visible = el.dataset.result === current;
+      el.hidden = !visible;
+      for (const control of el.querySelectorAll('input, select, textarea, button')) {
+        control.disabled = !visible;
+      }
+    }
+
+    if (current === 'google_docs') {
+      generateButton.textContent = 'Згенерувати та відкрити в Google Docs';
+      generateNote.textContent = 'Документ залишиться у Google Drive і відкриється в новій вкладці.';
+      resultHelp.textContent = 'Буде створено постійний Google Doc у папці «{{ google_folder_name }}».';
+      form.target = '_blank';
+    } else {
+      generateButton.textContent = 'Згенерувати та завантажити';
+      generateNote.textContent = 'Після формування готовий файл не зберігається.';
+      resultHelp.textContent = 'Готовий файл буде відданий браузеру і не зберігатиметься.';
+      form.removeAttribute('target');
+    }
+  }
+
+  docSelect.addEventListener('change', updateDocumentFields);
+  resultSelect.addEventListener('change', updateResultMode);
+  updateDocumentFields();
+  updateResultMode();
+})();
+</script>
+</body>
+</html>
